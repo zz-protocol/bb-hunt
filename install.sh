@@ -78,6 +78,7 @@ if [ "$DOCTOR_ONLY" -eq 0 ] && [ "$NO_START" -eq 0 ]; then
 · 看状态:   docker compose -f deploy/docker-compose.yml exec bb-hunt node src/monitor.mjs status
 · 测通知:   docker compose -f deploy/docker-compose.yml exec bb-hunt node src/monitor.mjs notify-test
 · 看日志:   docker compose -f deploy/docker-compose.yml logs -f bb-hunt
-· 改配置后: docker compose -f deploy/docker-compose.yml restart bb-hunt
+· 加/换凭据: 把 data/credentials.json 放好，然后热加载（不用重启）：
+             docker compose -f deploy/docker-compose.yml kill -s HUP bb-hunt
 EOF
 fi

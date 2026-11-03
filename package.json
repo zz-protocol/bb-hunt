@@ -1,6 +1,6 @@
 ﻿{
     "name":  "bb-hunt",
-    "version":  "1.1.0",
+    "version":  "1.1.1",
     "description":  "Read-only bug-bounty / crowd-testing project watcher with credential health checks and multi-channel alerts. Zero dependencies.",
     "type":  "module",
     "bin":  {

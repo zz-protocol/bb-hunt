@@ -260,9 +260,12 @@ src/monitor.mjs      # 主循环 / diff / 健康检查 / CLI
 src/collectors.mjs   # 5 个平台采集器
 src/notify.mjs       # 通知通道
 tools/export-creds.mjs  # 电脑端导出凭据（需要 Chromium 调试端口）
+tools/renew-creds.mjs   # 凭据续期助手（检测→等登录→导出→推送→热加载）
 deploy/              # Dockerfile / compose / systemd
-docs/                # PLATFORMS / CREDENTIALS / AGENT
+docs/                # PLATFORMS / CREDENTIALS / AGENT / DEPLOY-PROMPT
 ```
+
+> 想让服务器 agent 自动部署？把 [`docs/DEPLOY-PROMPT.md`](docs/DEPLOY-PROMPT.md) 整段丢给它。
 
 ## License
 

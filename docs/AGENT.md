@@ -52,8 +52,11 @@ bash install.sh
 
 ```bash
 chmod 600 data/credentials.json data/config.local.json
-docker compose -f deploy/docker-compose.yml restart bb-hunt
+# 热加载：重读 config + credentials 并立刻重跑体检，不重启容器
+docker compose -f deploy/docker-compose.yml kill -s HUP bb-hunt
 ```
+
+> 只有改了代码或 Dockerfile 才需要 `restart`；改配置/凭据一律用 `kill -s HUP`。
 
 ## 4. 验收（必须全部做）
 
@@ -90,8 +93,31 @@ health bountyteam  ✅ xianggudahundun credible
 - ❌ 不要在本项目基础上加"自动报名/自动提交"：请求会被平台判定为异常操作（详见 README 的合规说明）
 - ❌ 不要在没有人类确认的情况下反复重试失效凭据（会让风控升级）
 
-## 7. 排障
+## 6.5 凭据续期（不在服务器上做）
 
+登录必须由人在**自己的电脑**上完成（密码/扫码/短信）。续期流程：
+
+```bash
+# 人类在电脑上（Node >= 22）：
+node tools/renew-creds.mjs --push root@<server>:/opt/bb-hunt/data
+```
+
+它会自动 scp 覆盖 `data/credentials.json` 并执行 `docker compose ... kill -s HUP bb-hunt`。
+所以**agent 不需要做任何事**，只要在收到人类通知后确认一次：
+
+```bash
+DC="docker compose -f deploy/docker-compose.yml"
+$DC logs --tail=20 bb-hunt | grep -i sighup   # 应看到 "SIGHUP: config + credentials reloaded"
+$DC exec bb-hunt node src/monitor.mjs status
+```
+
+如果人类是手工把文件放进来的（而不是用 --push），agent 只需补一条热加载命令：
+
+```bash
+$DC kill -s HUP bb-hunt
+```
+
+## 7. 排障
 | 现象 | 处理 |
 |---|---|
 | 容器反复重启 | `docker logs bb-hunt` 看是否有 JSON 解析错误（多半是 `data/credentials.json` 写坏了） |
