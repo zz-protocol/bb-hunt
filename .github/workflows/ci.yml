@@ -18,6 +18,9 @@ jobs:
           node-version: ${{ matrix.node }}
       - name: smoke test (offline)
         run: node tests/smoke.mjs
+      - name: syntax check all modules
+        run: |
+          for f in src/*.mjs tools/*.mjs tests/*.mjs; do echo "check $f"; node --check "$f"; done
       - name: doctor runs without credentials
         run: |
           mkdir -p data

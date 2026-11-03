@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.0 — 2026-11-03
+
+### 新增
+- `tools/renew-creds.mjs` 凭据续期助手：
+  - 自动拉起带调试端口的浏览器（独立 profile、禁用后台标签页休眠）
+  - 逐家校验现有凭据，对失效平台自动打开登录页并**盯登录**，成功即捕获
+  - 写出 `data/credentials.json`（chmod 600）
+  - `--push user@host:/path` 自动 scp + 远端 SIGHUP 热加载
+  - `--watch` 常驻模式：登录态恢复即自动重新导出推送
+- 服务端 **SIGHUP 热加载**：`docker compose kill -s HUP bb-hunt` 即可重载 `credentials.json` /
+  `config.local.json` 并立刻重跑体检，无需重启容器
+
 ## 1.0.0 — 2026-11-03
 
 首个版本。

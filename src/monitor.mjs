@@ -46,16 +46,26 @@ function deepMerge(base, over) {
 
 let cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
 const LOCAL_CFG = path.join(DATA_DIR, 'config.local.json');
-if (fs.existsSync(LOCAL_CFG)) {
-  try { cfg = deepMerge(cfg, JSON.parse(fs.readFileSync(LOCAL_CFG, 'utf8'))); }
-  catch (e) { console.error('config.local.json parse error:', e.message); }
+
+function loadConfig() {
+  cfg = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+  if (fs.existsSync(LOCAL_CFG)) {
+    try { cfg = deepMerge(cfg, JSON.parse(fs.readFileSync(LOCAL_CFG, 'utf8'))); }
+    catch (e) { console.error('config.local.json parse error:', e.message); }
+  }
+  return cfg;
+}
+
+function loadCreds() {
+  if (!fs.existsSync(CRED_FILE)) { creds = {}; return creds; }
+  try { creds = JSON.parse(fs.readFileSync(CRED_FILE, 'utf8')); }
+  catch (e) { console.error('credentials.json parse error:', e.message); creds = {}; }
+  return creds;
 }
 
 let creds = {};
-if (fs.existsSync(CRED_FILE)) {
-  try { creds = JSON.parse(fs.readFileSync(CRED_FILE, 'utf8')); }
-  catch (e) { console.error('credentials.json parse error:', e.message); }
-}
+loadConfig();
+loadCreds();
 
 /* ---------------- infra ---------------- */
 
@@ -236,6 +246,18 @@ async function daemon() {
 
   let stop = false;
   for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { stop = true; log(`got ${sig}, exiting`); process.exit(0); });
+
+  // 热加载凭据：scp 新 credentials.json 后 `docker compose kill -s HUP bb-hunt` 即可，无需重启容器
+  process.on('SIGHUP', () => {
+    try {
+      loadConfig();
+      loadCreds();
+      const st = Object.keys(PLATFORMS).filter((k) => PLATFORMS[k].needsCred)
+        .map((k) => `${k}=${PLATFORMS[k].credReady(creds) ? 'yes' : 'no'}`).join(' ');
+      log(`SIGHUP: config + credentials reloaded (${st})`);
+      healthCheck(loadState()).catch(() => {});
+    } catch (e) { log('SIGHUP reload failed:', String(e.message || e)); }
+  });
 
   let lastHealth = 0;
   while (!stop) {

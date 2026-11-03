@@ -43,6 +43,45 @@
 
 4. 把 JSON 放到服务器 `data/credentials.json`，重启容器。
 
+## 续期（一条命令，人只负责点登录）
+
+凭据失效后，不要手工导出一堆东西 —— 用 `tools/renew-creds.mjs`（在你自己电脑上跑，Node ≥ 22）：
+
+```bash
+node tools/renew-creds.mjs
+```
+
+它会：
+1. 检查浏览器调试端口，没有就按正确参数帮你拉起来（独立 profile、禁用标签页休眠）
+2. 逐家校验现有凭据，打印 ✅/❌
+3. 对 ❌ 的那家**自动打开登录页**，然后每 3 秒盯一次 —— 你登录成功瞬间自动捕获
+4. 写出 `data/credentials.json`（chmod 600）
+
+推到服务器 + 热加载：
+
+```bash
+node tools/renew-creds.mjs --push root@1.2.3.4:/opt/bb-hunt/data
+```
+
+它做完 scp 后会执行：
+
+```bash
+ssh root@1.2.3.4 "docker compose -f /opt/bb-hunt/deploy/docker-compose.yml kill -s HUP bb-hunt"
+```
+
+服务端收到 `SIGHUP` 会**热加载** `credentials.json` / `config.local.json` 并立刻重跑一次体检，**不用重启容器**。
+（自定义命令：`--reload-cmd 'cd /opt/bb-hunt && docker compose ...'`）
+
+常驻盯梢（推荐给经常掉线的场景）：
+
+```bash
+node tools/renew-creds.mjs --push root@1.2.3.4:/opt/bb-hunt/data --watch
+```
+
+每分钟校验一次，一旦发现「浏览器里登录态有效」而「服务器上那份不一致」，就自动重新导出+推送。
+
+> 为什么不自动登录：登录需要密码/短信/扫码，自动提交等于绕过平台的技术保护措施。本项目只自动化"登录之后的一切"。
+
 ## 有效期与失效
 
 | 平台 | 是否有 refresh | 失效后怎么办 |

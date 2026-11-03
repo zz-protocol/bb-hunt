@@ -62,6 +62,32 @@ docker compose -f deploy/docker-compose.yml logs -f bb-hunt
 
 **想要 360 / 雷神 的告警**，在你自己电脑上导出凭据（见下），把 JSON 放到服务器的 `data/credentials.json`，重启容器。
 
+## 登录与续期（人只负责"点登录"）
+
+**登录本身必须由人完成**（账号密码 / 扫码 / 短信验证码）。脚本代登就等于绕过技术保护措施，本项目不做。
+
+但除了"输入密码"这一步，其余全自动 —— `tools/renew-creds.mjs`：
+
+```bash
+# 1. 自动起浏览器（独立 profile + 调试端口），检测哪几家还活着
+node tools/renew-creds.mjs
+
+# 2. 对失效的那家自动打开登录页，你登录成功后它 3 秒内自动捕获、写出 credentials.json
+#    然后自动 scp 到服务器并用 SIGHUP 让服务热加载（无需 restart）
+node tools/renew-creds.mjs --push root@1.2.3.4:/opt/bb-hunt/data
+
+# 3. 常驻模式：一直盯着，你一登录就自动导出+推送
+node tools/renew-creds.mjs --push root@1.2.3.4:/opt/bb-hunt/data --watch
+```
+
+服务端支持 **SIGHUP 热加载**（改完凭据不必重启容器）：
+
+```bash
+docker compose -f deploy/docker-compose.yml kill -s HUP bb-hunt
+```
+
+> `renew-creds` 需要 **Node ≥ 22**（全局 `WebSocket`，在你自己电脑上跑）。
+
 ## 配置
 
 所有可变数据都在 `data/`，不会进 git：
