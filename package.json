@@ -1,0 +1,33 @@
+{
+  "name": "bb-hunt",
+  "version": "1.0.0",
+  "description": "Read-only bug-bounty / crowd-testing project watcher with credential health checks and multi-channel alerts. Zero dependencies.",
+  "type": "module",
+  "bin": {
+    "bb-hunt": "src/monitor.mjs"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "start": "node src/monitor.mjs",
+    "once": "node src/monitor.mjs once",
+    "probe": "node src/monitor.mjs probe",
+    "status": "node src/monitor.mjs status",
+    "doctor": "node src/monitor.mjs doctor",
+    "notify-test": "node src/monitor.mjs notify-test",
+    "test": "node tests/smoke.mjs",
+    "export-creds": "node tools/export-creds.mjs"
+  },
+  "keywords": [
+    "bug-bounty",
+    "crowd-testing",
+    "src",
+    "monitor",
+    "dingtalk",
+    "telegram",
+    "alert"
+  ],
+  "license": "MIT",
+  "private": false
+}

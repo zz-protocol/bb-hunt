@@ -1,0 +1,41 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: smoke test (offline)
+        run: node tests/smoke.mjs
+      - name: doctor runs without credentials
+        run: |
+          mkdir -p data
+          node src/monitor.mjs doctor || true
+          node src/monitor.mjs status
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: build image
+        run: docker build -f deploy/Dockerfile -t bb-hunt:ci .
+      - name: container starts and stays up
+        run: |
+          mkdir -p data
+          cp credentials.example.json data/credentials.json
+          docker run -d --name bb -v "$PWD/data:/app/data" bb-hunt:ci
+          sleep 15
+          docker logs bb
+          test "$(docker inspect -f '{{.State.Running}}' bb)" = "true"
+          docker rm -f bb

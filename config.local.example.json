@@ -1,0 +1,16 @@
+{
+  "_readme": "复制为 data/config.local.json。这里放私密配置（通知密钥等），会覆盖 config.json 同名字段。不要提交到仓库。",
+  "notify": {
+    "dedupeMinutes": 10,
+    "channels": [
+      {
+        "type": "dingtalk-app",
+        "clientId": "<Client ID / AppKey>",
+        "clientSecret": "<Client Secret / AppSecret>",
+        "robotCode": "<Client ID>",
+        "userIds": ["<你的钉钉 UserID>"]
+      },
+      { "type": "console" }
+    ]
+  }
+}

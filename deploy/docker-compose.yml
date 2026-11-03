@@ -1,0 +1,19 @@
+services:
+  bb-hunt:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: bb-hunt:1.0.0
+    container_name: bb-hunt
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - DATA_DIR=/app/data
+    volumes:
+      # 凭据、私密配置、状态、日志都在这里
+      - ../data:/app/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

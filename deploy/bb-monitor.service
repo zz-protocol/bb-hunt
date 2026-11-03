@@ -1,0 +1,27 @@
+[Unit]
+Description=bb-hunt — bug bounty project watcher (read-only)
+Documentation=https://github.com/zz-protocol/bb-hunt
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 按实际部署路径与用户修改
+User=bb-hunt
+WorkingDirectory=/opt/bb-hunt
+Environment=DATA_DIR=/opt/bb-hunt/data
+ExecStart=/usr/bin/node src/monitor.mjs
+Restart=always
+RestartSec=10
+StandardOutput=append:/opt/bb-hunt/data/stdout.log
+StandardError=append:/opt/bb-hunt/data/stderr.log
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/bb-hunt/data
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

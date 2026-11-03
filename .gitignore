@@ -1,0 +1,19 @@
+# ---- runtime data / secrets ----
+data/
+config.local.json
+credentials.json
+*.log
+alerts.jsonl
+state.json
+state.json.tmp
+
+# ---- node ----
+node_modules/
+npm-debug.log*
+
+# ---- os / editor ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

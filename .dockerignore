@@ -1,0 +1,11 @@
+.git
+.github
+node_modules
+data
+*.log
+alerts.jsonl
+state.json
+config.local.json
+credentials.json
+README.md
+docs
