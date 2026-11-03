@@ -101,7 +101,27 @@ function saveState(s) {
   }
 }
 
-const ICON = { new: '🆕', open: '🔓', quota: '🎯', session: '⚠️', recover: '✅' };
+const ICON = { new: '🆕', open: '🔓', quota: '🎯', session: '⚠️', recover: '✅', network: '🌐' };
+
+/**
+ * 区分「凭据失效」和「网络不通」——这两者绝不能混淆：
+ * 前者需要人重新登录，后者只需要等网络恢复。误报会让人半夜白折腾。
+ */
+const AUTH_ERR = /credential invalid|needs re-login|\b401\b|\b403\b|Unauthorized|凭据|需要登录|权限鉴定失败|token 不存在/i;
+const NET_ERR = /fetch failed|network|timeout|timed out|aborted|ECONN|ETIMEDOUT|EAI_AGAIN|ENOTFOUND|socket hang up|other side closed|fetch failed/i;
+const isAuthErr = (m) => AUTH_ERR.test(m);
+const isNetErr = (m) => !isAuthErr(m) && NET_ERR.test(m);
+
+/** 连续网络失败计数（用于抑制抖动，只持续失败才告警） */
+const netFailStreak = new Map();
+const NET_ALERT_AFTER = 3;
+
+function bumpNetFail(key) {
+  const n = (netFailStreak.get(key) || 0) + 1;
+  netFailStreak.set(key, n);
+  return n;
+}
+function clearNetFail(key) { netFailStreak.delete(key); }
 
 function describe(it) {
   const b = [];
@@ -173,15 +193,24 @@ async function cycle(state) {
       log(`${p.label.padEnd(8)} ok items=${String(items.length).padStart(3)} alerts=${alerts} ${Date.now() - t0}ms`);
     } catch (e) {
       const msg = String(e.message || e);
-      state.platforms[key] = { ...prev, label: p.label, checkedAt: Date.now(), lastError: msg, login: p.needsCred ? false : prev.login };
+      state.platforms[key] = { ...prev, label: p.label, checkedAt: Date.now(), lastError: msg, login: p.needsCred ? prev.login : prev.login };
       log(`${p.label.padEnd(8)} FAIL ${msg.slice(0, 180)}`);
-      if (/credential invalid|needs re-login|401|需要登录|凭据/.test(msg)) {
+      if (isAuthErr(msg)) {
         await notify({
           type: 'session', platform: key, key: `${key}:session:${new Date().toISOString().slice(0, 13)}`,
           title: `${ICON.session} [${p.label}] 凭据失效，采集已停止`,
           body: `已连续有效 ${fmtDuration(Date.now() - (prev.okSince || prev.lastOk || Date.now()))}\n请在电脑上重新导出凭据并更新服务器 credentials.json`,
           priority: 'high',
         });
+      } else if (isNetErr(msg)) {
+        const n = bumpNetFail(key);
+        if (n === NET_ALERT_AFTER) {
+          await notify({
+            type: 'network', platform: key, key: `${key}:network:${new Date().toISOString().slice(0, 13)}`,
+            title: `${ICON.network} [${p.label}] 连续 ${n} 次网络失败`,
+            body: '凭据未必失效，先检查服务器出网/DNS。恢复后不需要任何操作。',
+          });
+        }
       }
     }
     await sleep(1000 + Math.floor(Math.random() * 900));
@@ -198,6 +227,7 @@ async function healthCheck(state) {
     if (!p.credReady(creds)) { log(`health ${key.padEnd(11)} ⚪ no credentials`); continue; }
     try {
       const r = await p.verify(ctx());
+      clearNetFail(key);
       const wasDown = prev.login === false;
       state.platforms[key] = {
         ...prev, login: true, loginReason: 'ok', user: r.user,
@@ -213,10 +243,26 @@ async function healthCheck(state) {
         });
       }
     } catch (e) {
+      const msg = String(e.message || e);
+      if (isNetErr(msg)) {
+        // 网络问题：不改 login 状态、不谎报凭据失效，只计数
+        const n = bumpNetFail(key);
+        state.platforms[key] = { ...prev, loginCheckedAt: Date.now(), lastError: msg };
+        log(`health ${key.padEnd(11)} 🌐 net-error (${n}x) ${msg.slice(0, 90)}`);
+        if (n === NET_ALERT_AFTER) {
+          await notify({
+            type: 'network', platform: key, key: `${key}:network:${new Date().toISOString().slice(0, 13)}`,
+            title: `${ICON.network} [${p.label}] 连续 ${n} 次网络失败`,
+            body: '凭据未必失效，先检查服务器出网/DNS。恢复后不需要任何操作。',
+          });
+        }
+        saveState(state);
+        continue;
+      }
       const wasUp = prev.login !== false;
-      state.platforms[key] = { ...prev, login: false, loginReason: String(e.message).slice(0, 120), loginCheckedAt: Date.now() };
-      log(`health ${key.padEnd(11)} ❌ ${e.message}`);
-      if (wasUp) {
+      state.platforms[key] = { ...prev, login: false, loginReason: msg.slice(0, 120), loginCheckedAt: Date.now() };
+      log(`health ${key.padEnd(11)} ❌ ${msg}`);
+      if (wasUp && isAuthErr(msg)) {
         await notify({
           type: 'session', platform: key, key: `${key}:session:${new Date().toISOString().slice(0, 13)}`,
           title: `${ICON.session} [${p.label}] 凭据已失效`,
