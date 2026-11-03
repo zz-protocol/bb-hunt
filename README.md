@@ -90,6 +90,8 @@ node tools/export-creds.mjs --print
 
 把输出贴到服务器 `data/credentials.json`。详见 [docs/CREDENTIALS.md](docs/CREDENTIALS.md)。
 
+> 导出工具需要 **Node ≥ 22**（用到全局 `WebSocket`）；服务端容器内自带 Node 20，不受影响。
+
 ### 2. 配置通知通道
 
 `data/config.local.json`（可多条并存）：

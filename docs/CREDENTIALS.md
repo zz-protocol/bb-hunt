@@ -38,6 +38,9 @@
    node tools/export-creds.mjs           # 或直接写 data/credentials.json
    ```
 
+   > 导出工具依赖全局 `WebSocket`，需要 **Node ≥ 22**（服务端本体只需 ≥ 18.17）。
+   > Node 20 可加 `--experimental-websocket` 运行。
+
 4. 把 JSON 放到服务器 `data/credentials.json`，重启容器。
 
 ## 有效期与失效
