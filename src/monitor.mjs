@@ -81,9 +81,14 @@ const notify = createNotifier(cfg.notify, ALERT_FILE, appendLine);
 
 function loadState() { try { return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')); } catch { return { v: 2, platforms: {} }; } }
 function saveState(s) {
-  const tmp = STATE_FILE + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(s, null, 1), 'utf8');
-  fs.renameSync(tmp, STATE_FILE);
+  try {
+    const tmp = STATE_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(s, null, 1), 'utf8');
+    fs.renameSync(tmp, STATE_FILE);
+  } catch (e) {
+    // 写不进 data/ 时不要崩：告警一次并在日志里说明（通常是容器内权限问题）
+    log('WARN cannot write state file:', e.message, '— 检查 data 目录权限 / check data dir ownership');
+  }
 }
 
 const ICON = { new: '🆕', open: '🔓', quota: '🎯', session: '⚠️', recover: '✅' };
