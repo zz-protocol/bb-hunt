@@ -18,7 +18,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PLATFORMS, { makeReq } from './collectors.mjs';
-import { createNotifier, senders } from './notify.mjs';
+import { createNotifier, senders, dingtalkAccessToken } from './notify.mjs';
 
 const SRC_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SRC_DIR, '..');
@@ -384,7 +384,21 @@ async function doctor() {
       if (!c.clientId || !c.clientSecret) bad('dingtalk-app: 缺 clientId/clientSecret');
       else if (!c.openConversationId && !(c.userIds || []).length) bad('dingtalk-app: 缺 openConversationId 或 userIds');
       else if ((c.userIds || []).some((u) => String(u).startsWith('__'))) bad('dingtalk-app: userIds 还是占位符');
-      else ok('dingtalk-app: 目标已配置');
+      else {
+        // 真的去换一次 access_token —— 只检查字段存在不够（密钥可能被重置、或服务器出口 IP 被白名单拦住）
+        try {
+          await dingtalkAccessToken(c);
+          ok('dingtalk-app: 凭证可换取 access_token');
+        } catch (e) {
+          bad('dingtalk-app: 换 token 失败 → ' + String(e.message).slice(0, 90));
+        }
+      }
+    }
+    if (c.type === 'telegram') {
+      try {
+        const j = await (await fetch(`https://api.telegram.org/bot${c.botToken}/getMe`)).json();
+        if (j.ok) ok(`telegram: bot @${j.result?.username}`); else bad('telegram: ' + JSON.stringify(j).slice(0, 80));
+      } catch (e) { bad('telegram: ' + String(e.message).slice(0, 80)); }
     }
   }
 
