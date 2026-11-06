@@ -121,8 +121,13 @@ export function createNotifier(notifyCfg, alertFile, appendLine) {
     if (!dedupe(a.key || a.title + a.body, minutes)) return false;
     appendLine?.(alertFile, JSON.stringify({ ts: new Date().toISOString(), ...a }));
     for (const ch of channels) {
-      try { await senders[ch.type](a, ch); }
-      catch (e) { console.error(`[notify:${ch.type}] ${e.message}`); }
+      try {
+        await senders[ch.type](a, ch);
+        // 每个通道单独记一行，避免"日志里看起来发送成功、实际没送到"
+        console.log(`[notify:${ch.type}] ok`);
+      } catch (e) {
+        console.error(`[notify:${ch.type}] FAILED ${e.message}`);
+      }
     }
     return true;
   };
